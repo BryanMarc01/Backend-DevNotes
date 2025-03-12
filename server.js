@@ -13,32 +13,25 @@ app.use(cors());
 io.on('connection', socket => {
   console.log('Usuario conectado ✅');
 
-  // Enviar notas actuales desde DB
-  db.all('SELECT * FROM notes', (err, notes) => {
-    socket.emit('loadNotes', notes);
-  });
+  const notes = db.prepare('SELECT * FROM notes').all();
+  socket.emit('loadNotes', notes);
 
   socket.on('newNote', note => {
-    db.run('INSERT INTO notes (id, content, x, y) VALUES (?, ?, ?, ?)', [note.id, note.content, note.x, note.y]);
+    db.prepare('INSERT INTO notes (id, content, x, y) VALUES (?, ?, ?, ?)').run(note.id, note.content, note.x, note.y);
     io.emit('newNote', note);
   });
 
   socket.on('updateNote', note => {
-    db.run('UPDATE notes SET content=?, x=?, y=? WHERE id=?', [note.content, note.x, note.y, note.id]);
+    db.prepare('UPDATE notes SET content=?, x=?, y=? WHERE id=?').run(note.content, note.x, note.y, note.id);
     io.emit('updateNote', note);
   });
 
   socket.on('deleteNote', noteId => {
-    db.run('DELETE FROM notes WHERE id=?', noteId);
+    db.prepare('DELETE FROM notes WHERE id=?').run(noteId);
     io.emit('deleteNote', noteId);
   });
-  
-  socket.on('disconnect', () => console.log('Usuario desconectado ❌'));
 
-  // Al conectar, enviamos las notas actuales:
-  db.all('SELECT * FROM notes', (err, notes) => {
-    socket.emit('loadNotes', notes);
-  });
+  socket.on('disconnect', () => console.log('Usuario desconectado ❌'));
 });
 
 httpServer.listen(3000, () => {
